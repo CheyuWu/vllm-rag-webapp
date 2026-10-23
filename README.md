@@ -247,6 +247,7 @@ Project defaults live in `src/config.py`.
 | `RETRIEVER_TYPE` | `hybrid` | Retrieval mode: `hybrid` or `vector`. |
 | `SEARCH_K` | `200` | Candidate chunks collected before reranking. |
 | `RERANK_RETURN_N` | `3` | Number of distinct source documents returned. |
+| `RERANK_BATCH_SIZE` | `16` | Candidate pairs per reranker forward pass; larger values use more GPU memory. |
 | `EMBED_TRUNCATE_DIM` | `512` | Embedding dimension; may be overridden with an environment variable. |
 | `LLM_BASE_URL` | `http://localhost:8001` | vLLM server URL. |
 | `LLM_TIMEOUT` | `120` | vLLM request timeout in seconds. |

@@ -19,7 +19,7 @@ SEARCH_K = 200
 
 # Batch size for the cross-encoder reranker's predict() call. Larger values use
 # more GPU memory but keep the GPU better saturated.
-RERANK_BATCH_SIZE = 64
+RERANK_BATCH_SIZE = 16
 
 # Number of final documents returned after reranking.
 RERANK_RETURN_N = 3

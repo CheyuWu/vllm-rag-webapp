@@ -5,19 +5,9 @@ indexes the BEIR `nfcorpus` dataset in Chroma, retrieves and reranks relevant
 passages, and asks a model served locally by vLLM to generate an answer. Each
 query response also includes the passages used as sources.
 
-## How it works
+## System Architecture
 
-```mermaid
-flowchart LR
-    Client -->|POST /query| API[FastAPI]
-    API --> Retriever
-    Retriever --> Vector[Chroma vector search]
-    Retriever --> BM25[BM25 search]
-    Vector --> Reranker[Cross-encoder reranker]
-    BM25 --> Reranker
-    Reranker --> LLM[vLLM]
-    LLM --> API
-```
+![System architecture](assets/system_architecture.png)
 
 By default, the application uses hybrid retrieval:
 
@@ -39,6 +29,7 @@ embeddings in `vectordatabase/`.
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
+- Node.js 22.17+ and npm (for the frontend)
 - Docker Desktop with Compose
 - An NVIDIA GPU, effectively required by vLLM
 
@@ -62,6 +53,31 @@ environment variables:
 vLLM names models by the Hugging Face repo id it was served with, so
 `GENERATE_MODEL` has to match what the `vllm` service was launched with. Both
 read the same variable, so setting it once keeps them together.
+
+## Frontend origins (CORS)
+
+The API reads `CORS_ALLOW_ORIGINS` at startup to configure which frontend
+origins browsers can use to call it. When unset, it allows
+`http://localhost:5173` and `http://127.0.0.1:5173` for local development.
+
+For deployment, set a comma-separated list of frontend origins, including
+the protocol and any non-default port, without a path or trailing slash:
+
+```bash
+CORS_ALLOW_ORIGINS=https://rag.example.com,https://staging.example.com make run
+```
+
+The configured list replaces the local defaults. Surrounding whitespace
+and empty list entries are ignored; an explicitly empty value allows no
+cross-origin requests. Restart the API after changing the value.
+
+For Docker Compose, set the variable in your shell or the repository-root
+`.env` file; Compose forwards it to the API container. For AWS, set it in
+the API service's runtime environment to the deployed frontend's origin.
+
+This is separate from the frontend's `PUBLIC_API_BASE_URL`: that variable
+tells the frontend where the API is, while `CORS_ALLOW_ORIGINS` tells the
+API which frontend origins to allow.
 
 ## Run locally
 
@@ -163,6 +179,35 @@ LANGSMITH_PROJECT=rag-dev
 
 Start the stack with `make backend`, then view the `rag-dev` project in
 LangSmith.
+
+## Open the frontend
+
+Start the API and vLLM using `make vllm` or `make backend` as described above.
+If you use `make vllm`, leave that terminal running. Once the API is ready at
+`http://localhost:8000`, open a separate terminal and run these commands from
+the repository root:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser. When running
+under WSL2, you can open this address in your Windows browser. Keep the frontend
+terminal running while using the app; press `Ctrl+C` to stop it. On later runs,
+you only need `cd frontend` and `npm run dev` unless dependencies have changed.
+
+The frontend uses `http://localhost:8000` for the API by default, so no frontend
+`.env` file is required for local development. To use a different API address,
+copy `frontend/.env.example` to `frontend/.env`, update `PUBLIC_API_BASE_URL`,
+and restart the frontend dev server.
+
+Vite prints the frontend URL in the terminal. If port `5173` is busy and Vite
+selects another port, add that origin to
+[`CORS_ALLOW_ORIGINS`](#frontend-origins-cors) and restart the API.
+
+See [frontend/README.md](frontend/README.md) for build and deployment instructions.
 
 ## LangSmith tracing
 
@@ -369,17 +414,3 @@ is not calculated for that stage: initial retrieval is evaluated at
 | Vector, DIM=256 | 10.26 s (31.68 ms/query) | 1850.46 s (5711.29 ms/query) | 1860.72 s | 0.3798 |
 | Hybrid, DIM=256 | 14.03 s (43.31 ms/query) | 1850.01 s (5709.91 ms/query) | 1864.04 s | 0.3798 |
 
-## Project layout
-
-```text
-main.py                   FastAPI application and startup lifecycle
-src/routes.py             Health and query endpoints
-src/generator.py          Prompt construction and answer generation
-src/model.py              LLMClient protocol and the vLLM client
-src/retriever/            Chroma, BM25, and reranking implementation
-src/config.py             Models, retrieval, chunking, and path settings
-evaluate/evaluation.py    BEIR retrieval evaluation entry point
-tests/                    Unit tests
-docker-compose.yml        API and vLLM services
-Makefile                  Stack targets, dev commands, and CI checks
-```

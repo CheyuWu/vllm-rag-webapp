@@ -8,8 +8,14 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from src.config import GENERATE_MODEL, LOG_DIR, VECTOR_DB_DIR
+from src.config import (
+    CORS_ALLOW_ORIGINS,
+    GENERATE_MODEL,
+    LOG_DIR,
+    VECTOR_DB_DIR,
+)
 from src.model import get_llm_client
 from src.retriever.retriever import get_retriever
 from src.retriever.utils import initialize_vector_database
@@ -60,6 +66,13 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title="RAG Web App", lifespan=lifespan)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ALLOW_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
     app.include_router(router)
     return app
 

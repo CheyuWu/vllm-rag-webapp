@@ -39,7 +39,9 @@ class RAGRetriever:
             search_kwargs={"k": search_k}
         )
         print(f"Loading reranker model: {reranker_model}")
-        self.reranker = CrossEncoder(reranker_model)
+        self.reranker = CrossEncoder(
+            reranker_model, model_kwargs={"dtype": "float16"}
+        )
 
     @traceable(name="retrieve-and-rerank", run_type="retriever")
     def retrieve_and_rerank(
